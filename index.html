@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <title>ilmanlaatu</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: LightGray;
+            margin: 40px;
+        }
+
+        h1 {
+            color: DarkBlue;
+        }
+
+
+
+        .box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 600px;
+            min-height: 400px
+        }
+
+        input {
+            padding: 8px;
+            margin: 5px;
+        }
+
+        button {
+            padding: 8px 12px;
+            background: Green;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background: DarkGreen;
+        }
+
+        .result {
+            margin-top: 20px;
+        }
+
+        .item {
+            padding: 10px;
+            border-bottom: 1px solid LightGray;
+        }
+
+        select {
+            padding: 8px;
+            margin: 5px;
+            min-width: 200px;
+        }
+
+        .button-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    </style>
+</head>
+
+<body>
+
+<div class="box">
+    <h1>Ilmanlaatu Helsinki</h1>
+    <h4>Tällä hetkellä toimii vain Tikkurilan mittauspiste ja tuloksia saa vain vuoden 2026 heinäkuulta.</h4>
+
+    <label>Sijainti:</label>
+    <select id="location"></select>
+
+    <label>Date:</label>
+    <input id="date" type="date">
+
+
+
+    <div class="button-row">
+    <button onclick="fetchData()">Hae mittaukset</button>
+    <button onclick="fetchCount()">Näytä mittausten määrä</button>
+    <button onclick="fetchAverage()">Näytä keskiarvo</button>
+    </div>
+
+    <div id="countResult"></div>
+    <div class="result" id="result"></div>
+
+
+</div>
+
+<script>
+
+async function fetchData() {
+    const location = document.getElementById("location").value;
+    const date = document.getElementById("date").value;
+
+    const url = `/api/measurements?location_name=${location}&date=${date}`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    console.log(data);
+
+    const resultDiv = document.getElementById("result");
+    resultDiv.innerHTML = "";
+
+    if (data.length === 0) {
+        resultDiv.innerHTML = "<p>Ei dataa</p>";
+        return;
+    }
+
+    data.forEach(item => {
+        const date = new Date(item.measure_date_and_time);
+
+        resultDiv.innerHTML += `
+            <div class="item">
+                <b>Parametri:</b> ${item.parameter_name} (${item.units}) <br>
+                <b>Arvo:</b> ${item.value} <br>
+                <b>Aika:</b> ${date.toLocaleString("fi-FI")}
+            </div>
+        `;
+    });
+}
+
+
+async function fetchCount() {
+    const location = document.getElementById("location").value;
+
+    const response = await fetch(`/api/measurements/count?location_name=${location}`);
+    const data = await response.json();
+
+    document.getElementById("countResult").innerHTML =
+        `<b>Mittauksia on yhteensä:</b> ${data.count}`;
+}
+
+
+async function loadLocations() {
+    const response = await fetch('/api/locations');
+    const data = await response.json();
+
+    const select = document.getElementById("location");
+
+    data.forEach(loc => {
+        const option = document.createElement("option");
+        option.value = loc.name;
+        option.text = loc.name;
+        select.appendChild(option);
+    });
+
+    document.getElementById("date").value = "2023-07-01";
+}
+
+async function fetchAverage() {
+    const location = document.getElementById("location").value;
+    const date = document.getElementById("date").value;
+
+    const response = await fetch(
+        `/api/measurements/average?location_name=${location}&date=${date}`);
+
+    const data = await response.json();
+
+    const resultDiv = document.getElementById("countResult");
+    resultDiv.innerHTML = "";
+
+    if (data.length === 0) {
+        resultDiv.innerHTML = "<p>Ei löydy dataa</p>";
+        return;
+    }
+
+    data.forEach(item => {
+        resultDiv.innerHTML += `
+            <div class="item">
+                <b>${item.parameter_name}</b> (${item.units})<br>
+                Keskiarvo: ${item.average}
+            </div>
+        `;
+    });
+}
+
+window.onload = loadLocations;
+
+</script>
+
+</body>
+</html>
